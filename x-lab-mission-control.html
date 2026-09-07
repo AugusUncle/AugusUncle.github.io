@@ -1,0 +1,1764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[X]-LAB // Mission Control</title>
+<style>
+/* ========== CSS VARIABLES ========== */
+:root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #0f1421;
+  --bg-card: rgba(20, 28, 46, 0.6);
+  --bg-card-hover: rgba(30, 40, 65, 0.75);
+  --border-glow: rgba(59, 130, 246, 0.3);
+  --border-glow-green: rgba(16, 185, 129, 0.3);
+  --border-glow-amber: rgba(245, 158, 11, 0.3);
+  --color-blue: #3b82f6;
+  --color-green: #10b981;
+  --color-amber: #f59e0b;
+  --color-red: #ef4444;
+  --color-purple: #8b5cf6;
+  --color-cyan: #06b6d4;
+  --color-text: #e2e8f0;
+  --color-text-muted: #64748b;
+  --color-text-dim: #475569;
+  --font-body: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  --radius: 8px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========== THEME: AMBER ========== */
+body.theme-amber {
+  --color-blue: #f59e0b;
+  --border-glow: rgba(245, 158, 11, 0.3);
+  --border-glow-green: rgba(245, 158, 11, 0.3);
+}
+
+/* ========== THEME: GREEN ========== */
+body.theme-green {
+  --color-blue: #10b981;
+  --border-glow: rgba(16, 185, 129, 0.3);
+  --border-glow-green: rgba(16, 185, 129, 0.3);
+}
+
+/* ========== RESET ========== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-primary);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Dot grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Radial gradient glow */
+body::after {
+  content: '';
+  position: fixed;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 600px;
+  background: radial-gradient(ellipse, rgba(59, 130, 246, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+::selection { background: rgba(59, 130, 246, 0.3); color: #fff; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--color-text-dim); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-blue); }
+
+/* ========== LAYOUT ========== */
+.container { max-width: 1400px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+/* ========== HEADER ========== */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(10, 14, 23, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+  padding: 14px 0;
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.header-left { display: flex; align-items: center; gap: 16px; }
+.header-logo {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-blue);
+  text-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+  letter-spacing: 0.5px;
+}
+.header-logo .cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: var(--color-blue);
+  margin-left: 2px;
+  animation: blink 1s step-end infinite;
+  vertical: text-bottom;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+  flex-wrap: wrap;
+}
+.status-item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--color-green);
+  box-shadow: 0 0 8px var(--color-green);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.status-item span { color: var(--color-text); }
+.status-item .label { color: var(--color-text-muted); }
+
+.header-right { display: flex; align-items: center; gap: 12px; }
+.theme-btn {
+  background: transparent;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.theme-btn:hover { border-color: var(--color-blue); color: var(--color-blue); }
+
+.sound-btn {
+  background: transparent;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  color: var(--color-text-muted);
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 14px;
+}
+.sound-btn:hover { border-color: var(--color-blue); color: var(--color-blue); }
+.sound-btn.active { color: var(--color-green); border-color: var(--color-green); }
+
+/* ========== HERO SECTION ========== */
+.hero {
+  padding: 80px 0 60px;
+  text-align: center;
+  position: relative;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-green);
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 6px 14px;
+  border-radius: 20px;
+  margin-bottom: 24px;
+}
+.hero-badge .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--color-green);
+  box-shadow: 0 0 6px var(--color-green);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+.hero h1 {
+  font-size: clamp(36px, 5vw, 64px);
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #e2e8f0 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero h1 .accent { color: var(--color-blue); -webkit-text-fill-color: var(--color-blue); }
+.hero-sub {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--color-text-muted);
+  max-width: 640px;
+  margin: 0 auto 40px;
+  line-height: 1.8;
+}
+.hero-sub .highlight { color: var(--color-blue); }
+.hero-sub .green { color: var(--color-green); }
+
+/* Stats Bar */
+.hero-stats {
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.hero-stat { text-align: center; }
+.hero-stat .num {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-blue);
+  text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+.hero-stat .num.green { color: var(--color-green); text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+.hero-stat .num.amber { color: var(--color-amber); text-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
+.hero-stat .label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ========== SECTION ========== */
+.section { padding: 60px 0; }
+.section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 36px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 24px;
+  font-weight: 700;
+}
+.section-title .icon {
+  font-family: var(--font-mono);
+  color: var(--color-blue);
+  font-size: 20px;
+  text-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+.section-title .line {
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--color-blue), transparent);
+  border-radius: 1px;
+}
+.section-subtitle {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+/* Filter Tabs */
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+.filter-tab {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid rgba(100, 116, 139, 0.2);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.filter-tab:hover { border-color: rgba(59, 130, 246, 0.3); color: var(--color-text); }
+.filter-tab.active {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: var(--color-blue);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+}
+
+/* ========== EQUIPMENT GRID ========== */
+.equip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+.equip-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, 0.08);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: var(--transition);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.equip-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  padding: 1px;
+  background: linear-gradient(135deg, transparent, transparent);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: var(--transition);
+}
+.equip-card:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 20px rgba(59, 130, 246, 0.08);
+}
+.equip-card:hover .equip-img { transform: scale(1.05); }
+.equip-card:hover .equip-glow { opacity: 1; }
+
+.equip-glow {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 200px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-blue), transparent);
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.equip-img-wrap {
+  width: 100%;
+  height: 160px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(15, 20, 33, 0.5);
+  margin-bottom: 14px;
+  position: relative;
+  border: 1px solid rgba(59, 130, 246, 0.05);
+}
+.equip-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+  filter: brightness(0.9) contrast(1.05);
+}
+.equip-img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 28px;
+  color: var(--color-text-dim);
+  background: linear-gradient(135deg, rgba(15, 20, 33, 0.8), rgba(20, 28, 46, 0.8));
+}
+
+.equip-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.equip-name {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-text);
+}
+.equip-model {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+.equip-status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.status-online { background: rgba(16, 185, 129, 0.1); color: var(--color-green); border: 1px solid rgba(16, 185, 129, 0.2); }
+.status-offline { background: rgba(100, 116, 139, 0.1); color: var(--color-text-muted); border: 1px solid rgba(100, 116, 139, 0.2); }
+.status-testing { background: rgba(245, 158, 11, 0.1); color: var(--color-amber); border: 1px solid rgba(245, 158, 11, 0.2); }
+
+.equip-params {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--color-text-muted);
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(59, 130, 246, 0.06);
+}
+.equip-params .param-row { display: flex; gap: 4px; }
+.equip-params .param-key { color: var(--color-text-dim); min-width: 60px; }
+.equip-params .param-val { color: var(--color-text); }
+.equip-params .param-val.blue { color: var(--color-blue); }
+.equip-params .param-val.green { color: var(--color-green); }
+
+.equip-cat-tag {
+  position: absolute;
+  top: 12px; right: 12px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-text-dim);
+  background: rgba(10, 14, 23, 0.7);
+  padding: 2px 6px;
+  border-radius: 3px;
+  z-index: 2;
+}
+
+/* ========== EXPERIMENTS ========== */
+.exp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 20px;
+}
+.exp-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, 0.08);
+  border-radius: var(--radius);
+  padding: 24px;
+  transition: var(--transition);
+  cursor: pointer;
+  position: relative;
+}
+.exp-card:hover {
+  border-color: rgba(59, 130, 246, 0.25);
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+.exp-card:hover .exp-glow { opacity: 1; }
+
+.exp-glow {
+  position: absolute;
+  top: 0; left: 24px; right: 24px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-blue), transparent);
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.exp-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-blue);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+.exp-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+.exp-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+.exp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.exp-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.exp-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--color-blue);
+  border: 1px solid rgba(59, 130, 246, 0.12);
+}
+.exp-progress {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.progress-completed { background: rgba(16, 185, 129, 0.1); color: var(--color-green); border: 1px solid rgba(16, 185, 129, 0.2); }
+.progress-active { background: rgba(245, 158, 11, 0.1); color: var(--color-amber); border: 1px solid rgba(245, 158, 11, 0.2); }
+.progress-failed { background: rgba(239, 68, 68, 0.1); color: var(--color-red); border: 1px solid rgba(239, 68, 68, 0.2); }
+.progress-archived { background: rgba(100, 116, 139, 0.1); color: var(--color-text-muted); border: 1px solid rgba(100, 116, 139, 0.2); }
+
+/* ========== MODAL ========== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.active { display: flex; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 12px;
+  max-width: 640px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 28px;
+  position: relative;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.modal-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: transparent;
+  border: 1px solid rgba(100, 116, 139, 0.2);
+  color: var(--color-text-muted);
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--transition);
+  font-size: 14px;
+}
+.modal-close:hover { border-color: var(--color-red); color: var(--color-red); }
+
+.modal-code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-blue);
+  margin-bottom: 6px;
+}
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+.modal-section { margin-bottom: 20px; }
+.modal-section-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.modal-section-title::before {
+  content: '';
+  width: 3px; height: 12px;
+  background: var(--color-blue);
+  border-radius: 2px;
+}
+.modal-section-body {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.7;
+}
+.modal-equip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.modal-equip-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--color-blue);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+/* ========== PROFILE ========== */
+.profile-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 32px;
+}
+@media (max-width: 768px) {
+  .profile-grid { grid-template-columns: 1fr; }
+}
+
+.profile-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, 0.12);
+  border-radius: var(--radius);
+  padding: 28px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.profile-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 80px;
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.08), transparent);
+}
+.profile-avatar {
+  width: 96px; height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-blue), var(--color-purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 auto 16px;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
+}
+.profile-name {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.profile-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-blue);
+  margin-bottom: 16px;
+}
+.profile-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  padding: 4px 10px;
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 16px;
+}
+.profile-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(59, 130, 246, 0.08);
+}
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.contact-item .channel {
+  color: var(--color-green);
+  min-width: 50px;
+  font-size: 10px;
+}
+.contact-item .addr { color: var(--color-text); }
+
+.profile-skills { display: flex; flex-direction: column; gap: 16px; }
+.skill-group-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.skill-group-title::before {
+  content: '';
+  width: 3px; height: 14px;
+  background: var(--color-blue);
+  border-radius: 2px;
+}
+.skill-row { margin-bottom: 10px; }
+.skill-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.skill-label .name { color: var(--color-text); }
+.skill-label .pct { color: var(--color-blue); }
+.skill-bar {
+  height: 6px;
+  background: rgba(15, 20, 33, 0.8);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.skill-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--color-blue), var(--color-cyan));
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+  transition: width 1s ease;
+  position: relative;
+}
+.skill-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: shimmer 2s infinite;
+}
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.skill-fill.green { background: linear-gradient(90deg, var(--color-green), var(--color-cyan)); box-shadow: 0 0 8px rgba(16, 185, 129, 0.3); }
+.skill-fill.amber { background: linear-gradient(90deg, var(--color-amber), #fbbf24); box-shadow: 0 0 8px rgba(245, 158, 11, 0.3); }
+.skill-fill.purple { background: linear-gradient(90deg, var(--color-purple), #a78bfa); box-shadow: 0 0 8px rgba(139, 92, 246, 0.3); }
+
+/* ========== TERMINAL ========== */
+.terminal {
+  margin: 60px 0 40px;
+  background: rgba(10, 14, 23, 0.9);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: var(--radius);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(15, 20, 33, 0.8);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+}
+.terminal-header-left { display: flex; align-items: center; gap: 8px; }
+.terminal-dots { display: flex; gap: 6px; }
+.terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+.terminal-dot.red { background: #ef4444; }
+.terminal-dot.yellow { background: #f59e0b; }
+.terminal-dot.green { background: #10b981; }
+.terminal-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.terminal-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-dim);
+}
+.terminal-body {
+  padding: 16px;
+  min-height: 140px;
+  max-height: 240px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.terminal-line { margin-bottom: 4px; }
+.terminal-line .prompt { color: var(--color-green); }
+.terminal-line .cmd { color: var(--color-text); }
+.terminal-line .output { color: var(--color-text-muted); }
+.terminal-line .accent { color: var(--color-blue); }
+.terminal-line .warn { color: var(--color-amber); }
+.terminal-input-wrap {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(59, 130, 246, 0.08);
+  gap: 8px;
+}
+.terminal-input-prompt {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-green);
+}
+.terminal-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  caret-color: var(--color-blue);
+}
+
+/* ========== SEARCH OVERLAY ========== */
+.search-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 300;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15vh;
+}
+.search-overlay.active { display: flex; animation: fadeIn 0.15s ease; }
+.search-box {
+  width: 90%;
+  max-width: 560px;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.search-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  padding: 16px 20px;
+  caret-color: var(--color-blue);
+}
+.search-input::placeholder { color: var(--color-text-dim); }
+.search-results { max-height: 300px; overflow-y: auto; }
+.search-result {
+  padding: 10px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.05);
+  transition: var(--transition);
+}
+.search-result:hover { background: rgba(59, 130, 246, 0.06); }
+.search-result .name { font-size: 14px; color: var(--color-text); }
+.search-result .meta { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+.search-hint {
+  padding: 10px 20px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-dim);
+  border-top: 1px solid rgba(59, 130, 246, 0.08);
+}
+
+/* ========== FOOTER ========== */
+.footer {
+  text-align: center;
+  padding: 40px 0 60px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-dim);
+  border-top: 1px solid rgba(59, 130, 246, 0.06);
+}
+.footer .accent { color: var(--color-blue); }
+
+/* ========== ANIMATIONS ========== */
+.fade-in {
+  animation: fadeInUp 0.6s ease forwards;
+  opacity: 0;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.4s; }
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+  .header-status { display: none; }
+  .hero h1 { font-size: 32px; }
+  .hero-stats { gap: 24px; }
+  .equip-grid { grid-template-columns: 1fr; }
+  .exp-grid { grid-template-columns: 1fr; }
+  .section-title { font-size: 20px; }
+}
+@media (max-width: 375px) {
+  .container { padding: 0 16px; }
+  .hero { padding: 40px 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- ========== HEADER ========== -->
+<header class="header">
+  <div class="container">
+    <div class="header-inner">
+      <div class="header-left">
+        <div class="header-logo" id="logo-text">[X]-LAB // System Operational<span class="cursor"></span></div>
+      </div>
+      <div class="header-status">
+        <div class="status-item"><span class="status-dot"></span><span class="label">STATUS:</span><span>ONLINE</span></div>
+        <div class="status-item"><span class="label">UPTIME:</span><span>99.9%</span></div>
+        <div class="status-item"><span class="label">FOCUS:</span><span>Optical Metrology & Failure Analysis</span></div>
+        <div class="status-item"><span class="label">EQUIP:</span><span>48 UNITS</span></div>
+      </div>
+      <div class="header-right">
+        <button class="theme-btn" onclick="toggleTheme()" title="按 T 键切换">THEME: BLUE</button>
+        <button class="sound-btn" id="sound-btn" onclick="toggleSound()" title="音效开关">🔇</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ========== HERO ========== -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge fade-in">
+      <span class="dot"></span>
+      <span>SYSTEM OPERATIONAL // ALL SYSTEMS NOMINAL</span>
+    </div>
+    <h1 class="fade-in delay-1">
+      Mission Control<br>
+      <span class="accent">// Lab Console</span>
+    </h1>
+    <p class="hero-sub fade-in delay-2">
+      欢迎进入 <span class="highlight">[X]-LAB</span> 控制台。<br>
+      这里是精密光学测量、半导体失效分析与材料表征的前沿阵地。<br>
+      <span class="green">48 台</span>精密设备 · <span class="highlight">7 大</span>分析平台 · <span class="green">8 项</span>进行中实验
+    </p>
+    <div class="hero-stats fade-in delay-3">
+      <div class="hero-stat">
+        <div class="num" data-target="48">0</div>
+        <div class="label">EQUIPMENT UNITS</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num green" data-target="7">0</div>
+        <div class="label">ANALYSIS PLATFORMS</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num amber" data-target="8">0</div>
+        <div class="label">ACTIVE EXPERIMENTS</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num" data-target="3023">0</div>
+        <div class="label">TOTAL VALUE (万元)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== EQUIPMENT ========== -->
+<section class="section" id="equipment">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-title">
+        <span class="icon">⚙️</span>
+        <span>设备工作台</span>
+        <span class="line"></span>
+        <span class="section-subtitle">EQUIPMENT & HARDWARE INVENTORY</span>
+      </div>
+    </div>
+    <div class="filter-tabs fade-in" id="equip-filters">
+      <button class="filter-tab active" data-cat="all">ALL // 全部</button>
+      <button class="filter-tab" data-cat="optical">光学测量与显微镜</button>
+      <button class="filter-tab" data-cat="electrical">电性能测试</button>
+      <button class="filter-tab" data-cat="material">材料分析</button>
+      <button class="filter-tab" data-cat="sample">样品制备</button>
+      <button class="filter-tab" data-cat="general">通用设备</button>
+      <button class="filter-tab" data-cat="soldering">焊接返修</button>
+      <button class="filter-tab" data-cat="failure">开封与失效分析</button>
+    </div>
+    <div class="equip-grid" id="equip-grid"></div>
+  </div>
+</section>
+
+<!-- ========== EXPERIMENTS ========== -->
+<section class="section" id="experiments">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-title">
+        <span class="icon">🧪</span>
+        <span>实验项目日志</span>
+        <span class="line"></span>
+        <span class="section-subtitle">LAB LOGS & EXPERIMENTS</span>
+      </div>
+    </div>
+    <div class="exp-grid" id="exp-grid"></div>
+  </div>
+</section>
+
+<!-- ========== PROFILE ========== -->
+<section class="section" id="profile">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-title">
+        <span class="icon">🧑‍🔬</span>
+        <span>主理人档案</span>
+        <span class="line"></span>
+        <span class="section-subtitle">LAB DIRECTOR PROFILE</span>
+      </div>
+    </div>
+    <div class="profile-grid fade-in">
+      <!-- Profile Card -->
+      <div class="profile-card">
+        <div class="profile-avatar">崔</div>
+        <div class="profile-name">崔兵</div>
+        <div class="profile-title">Lab Director // 实验室主理人</div>
+        <div class="profile-id">ID: 20134777 // CLEARANCE: LEVEL-7</div>
+        <p style="font-size: 13px; color: var(--color-text-muted); line-height: 1.7; margin-top: 12px;">
+          全栈端到端深度审查工程师，精通光学测量、半导体失效分析与材料表征。主导实验室设备体系搭建与自动化流程闭环。
+        </p>
+        <div class="profile-contacts">
+          <div class="contact-item">
+            <span class="channel">[SIGNAL]</span>
+            <span class="addr">飞书 @崔兵</span>
+          </div>
+          <div class="contact-item">
+            <span class="channel">[ID]</span>
+            <span class="addr">EMP-20134777</span>
+          </div>
+          <div class="contact-item">
+            <span class="channel">[DEPT]</span>
+            <span class="addr">Lab Line // 舜宇集团</span>
+          </div>
+          <div class="contact-item">
+            <span class="channel">[STATUS]</span>
+            <span class="addr" style="color: var(--color-green);">● AVAILABLE</span>
+          </div>
+        </div>
+      </div>
+      <!-- Skills -->
+      <div class="profile-skills">
+        <div>
+          <div class="skill-group-title">🔬 ANALYTICAL SKILLS // 分析能力</div>
+          <div class="skill-row">
+            <div class="skill-label"><span class="name">光学测量与MTF分析</span><span class="pct">95%</span></div>
+            <div class="skill-bar"><div class="skill-fill" style="width: 95%"></div></div>
+          </div>
+          <div class="skill-row">
+            <div class="skill-label"><span class="name">SEM/EDS 微观表征</span><span class="pct">90%</span></div>
+            <div class="skill-bar"><div class="skill-fill green" style="width: 90%"></div></div>
+          </div>
+          <div class="skill-row">
+            <div class="skill-label"><span class="name">失效分析(FA)</span><span class="pct">88%</span></div>
+            <div class="skill-bar"><div class="skill-fill amber" style="width: 88%"></div></div>
+          </div>
+          <div class="skill-row">
+            <div class="skill-label"><span class="name">电性能测试与表征</span><span class="pct">85%</span></div>
+            <div class="skill-bar"><div class="skill-fill" style="width: 85%"></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="skill-group-title">🛠 ENGINEERING SKILLS // 工程能力</div>
+          <div class="skill-row">
+            <div class="skill-label"><span class="name">全栈开发(Python/JS)</span><span class="pct">92%</span></div>
+            <div class="skill-bar"><div class="skill-fill purple" style="width: 92%"></div></div>
+          </div>
+          <div class="skill-row">
+            <div class="skill-label"><span class="name">自动化流程闭环</span><span class="pct">90%</span></div>
+            <div class="skill-bar"><div class="skill-fill green" style="width: 90%"></div></div>
+          </div>
+          <div class="skill-row">
+            <div class="skill-label"><span class="name">飞书生态集成</span><span class="pct">88%</span></div>
+            <div class="skill-bar"><div class="skill-fill" style="width: 88%"></div></div>
+          </div>
+          <div class="skill-row">
+            <div class="skill-label"><span class="name">Bug深度审查与修复</span><span class="pct">93%</span></div>
+            <div class="skill-bar"><div class="skill-fill purple" style="width: 93%"></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="skill-group-title">🌐 CROSS-DOMAIN // 跨领域能力</div>
+          <div class="skill-row">
+            <div class="skill-label"><span class="name">跨语言教学设计</span><span class="pct">85%</span></div>
+            <div class="skill-bar"><div class="skill-fill amber" style="width: 85%"></div></div>
+          </div>
+          <div class="skill-row">
+            <div class="skill-label"><span class="name">设备资产管理</span><span class="pct">95%</span></div>
+            <div class="skill-bar"><div class="skill-fill" style="width: 95%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== TERMINAL ========== -->
+<section class="container">
+  <div class="terminal fade-in">
+    <div class="terminal-header">
+      <div class="terminal-header-left">
+        <div class="terminal-dots">
+          <div class="terminal-dot red"></div>
+          <div class="terminal-dot yellow"></div>
+          <div class="terminal-dot green"></div>
+        </div>
+        <span class="terminal-title">x-lab@console: ~</span>
+      </div>
+      <span class="terminal-hint">输入 help 查看命令 // 按 / 搜索设备</span>
+    </div>
+    <div class="terminal-body" id="terminal-body">
+      <div class="terminal-line"><span class="output">[X]-LAB Console v2.6.0 // Boot sequence complete.</span></div>
+      <div class="terminal-line"><span class="output">Type </span><span class="accent">help</span><span class="output"> to see available commands.</span></div>
+    </div>
+    <div class="terminal-input-wrap">
+      <span class="terminal-input-prompt">x-lab@console:~$</span>
+      <input type="text" class="terminal-input" id="terminal-input" autocomplete="off" spellcheck="false">
+    </div>
+  </div>
+</section>
+
+<!-- ========== SEARCH OVERLAY ========== -->
+<div class="search-overlay" id="search-overlay">
+  <div class="search-box">
+    <input type="text" class="search-input" id="search-input" placeholder="搜索设备名称、型号、参数..." autocomplete="off" spellcheck="false">
+    <div class="search-results" id="search-results"></div>
+    <div class="search-hint">ESC 关闭 // ↑↓ 选择 // Enter 跳转</div>
+  </div>
+</div>
+
+<!-- ========== MODAL ========== -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal-content">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ========== FOOTER ========== -->
+<footer class="footer">
+  <div class="container">
+    <p>[X]-LAB // Mission Control v2.6.0 — <span class="accent">Built with precision</span> // © 2026 舜宇集团 Lab Line</p>
+    <p style="margin-top: 6px;">Powered by 48 instruments · 7 platforms · 1 mission: <span class="accent">Precision Engineering</span></p>
+  </div>
+</footer>
+
+<script>
+// ========== EQUIPMENT DATA ==========
+const equipmentData = [
+  // --- OPTICAL ---
+  {id:'eq-01', cat:'optical', name:'MTF测量仪 / 传函测试仪', model:'Trioptics ImageMaster HR', status:'online', img:'https://www.trioptics.com/wp-content/uploads/2020/01/ImageMaster-HR.jpg',
+   params:[['精度','±0.03','blue'],['焦距','0.5mm~200mm',''],['波长','400~900nm','green'],['模式','轴向/离轴/视场扫描','']],
+   desc:'镜头调制传递函数(MTF)测量、光学成像质量评估'},
+  {id:'eq-02', cat:'optical', name:'全自动影像测量仪', model:'Nikon VMZ-S3020', status:'online', img:'https://www.instrument.com.cn/netshow/sh104593/c391910.htm',
+   params:[['范围','300×200×200mm','blue'],['精度','±(1.5+L/100)μm',''],['光源','多波长LED','green'],['模式','CNC自动','']],
+   desc:'高精度2D/3D尺寸测量、自动检测'},
+  {id:'eq-03', cat:'optical', name:'白光干涉轮廓仪', model:'Zygo NewView NV', status:'online', img:'https://www.zygo.com/products/profilers-3d/optical-profilers/newview-9000',
+   params:[['垂直分辨率','0.1nm','blue'],['水平','0.3~5μm',''],['范围','0~10mm','green'],['物镜','2.5X~100X','']],
+   desc:'非接触式表面形貌测量、粗糙度与台阶高度测量'},
+  {id:'eq-04', cat:'optical', name:'高度测量仪', model:'Mitutoyo VL-50-B', status:'online', img:'https://www.globaltestsupply.com/images/products/cache/mitutoyo/318_221a/main/mitutoyo-318-221a-litematic-low-force-measuring-unit.jpg',
+   params:[['范围','0~50mm','blue'],['分辨率','0.01μm','green'],['精度','(0.5+L/100)μm',''],['测力','0.01N/0.15N/1N','']],
+   desc:'精密高度测量、薄片/薄膜厚度测量'},
+  {id:'eq-05', cat:'optical', name:'3D超景深数码显微镜', model:'Keyence VHX-7000N', status:'online', img:'https://www.keyence.com/img/products/model/AS_101115_L.jpg',
+   params:[['显示屏','23.5" 4K LCD','blue'],['放大','6000X','green'],['硬盘','1TB',''],['景深','传统20倍','']],
+   desc:'高分辨率2D/3D观察与测量、缺陷分析'},
+  {id:'eq-06', cat:'optical', name:'激光共聚焦3D形貌仪', model:'Keyence VK-X3050', status:'online', img:'https://www.keyence.com/img/products/model/AS_114077_L.jpg',
+   params:[['放大','42~28,800X','blue'],['分辨率','0.01nm','green'],['扫描','50×50mm',''],['薄膜','100~5000nm','']],
+   desc:'激光共聚焦扫描、表面微观形貌与薄膜厚度测量'},
+  {id:'eq-07', cat:'optical', name:'3D宽域光学轮廓仪', model:'Keyence VR-6200', status:'online', img:'https://www.keyence.com/img/products/model/AS_119825_L.jpg',
+   params:[['面积','200×100×50mm','blue'],['分辨率','0.1μm','green'],['扫描时间','最低1秒',''],['原理','结构光+三角','']],
+   desc:'非接触式大面积3D表面形貌测量'},
+  {id:'eq-08', cat:'optical', name:'红外显微镜', model:'Olympus BX53', status:'online', img:'http://www.spachoptics.com/cdn/shop/files/OLYMPUS-BX53-P-2.jpg?v=1765520974',
+   params:[['光学','UIS2','blue'],['观察','明/暗/荧光/偏光/红外','green'],['相机','5MP CCD',''],['重量','21kg','']],
+   desc:'荧光/红外/明暗场/偏光等多种显微观察'},
+  {id:'eq-09', cat:'optical', name:'体视显微镜', model:'Leica S9i', status:'online', img:'https://www.leica-microsystems.com/fileadmin/_migrated/Products/leica-s9-series_02.jpg',
+   params:[['放大','6.1X~55X','blue'],['工作距离','122mm','green'],['视场','37.7mm',''],['内置摄像头','Yes','']],
+   desc:'工业检测、解剖与组装操作观察'},
+  {id:'eq-10', cat:'optical', name:'正置金相显微镜', model:'Olympus BX53M', status:'online', img:'https://evidentscientific.com/zh/products/upright/media_1850819b7cc9d05532033c1d871a21e73735aee55.png?width=750&format=png&optimize=medium',
+   params:[['观察','明/暗/MIX/偏光/DIC','blue'],['光源','LED','green'],['台面','76×52mm',''],['重量','18.3kg','']],
+   desc:'金相分析、材料微观组织观察'},
+  {id:'eq-11', cat:'optical', name:'微型CT / 3D X射线显微镜', model:'ZEISS Xradia 610 Versa', status:'online', img:'https://www.zeiss.com/content/dam/rms/reference-master/products/xradia/xradia-context-microct/context_product.jpg/_jcr_content/renditions/original.image_file.1080.1080.420,0,1500,1080.file/context_product.jpg',
+   params:[['分辨率','500nm','blue'],['电压','30~160kV','green'],['样品','25kg, φ300mm',''],['物镜','0.4X/4X/20X','']],
+   desc:'非破坏性3D内部结构成像、材料分析'},
+  {id:'eq-12', cat:'optical', name:'3D超景深数码显微镜', model:'舜宇 SOPTOP DMS1000', status:'online', img:'https://www.sunnyoptical.com/webfile/temps/202410916391695091.jpg',
+   params:[['放大','20X~7500X','blue'],['Z轴','51mm电动','green'],['显示','28" 4K LCD',''],['CPU','i7/64GB','']],
+   desc:'超景深3D成像、2D/3D精密测量、缺陷检测'},
+  {id:'eq-13', cat:'optical', name:'连续变倍体视显微镜', model:'舜宇 SOPTOP SZM45', status:'offline', img:'https://www.optical17.com/old_version/images/product/sunny/SZM45/szm45.jpg',
+   params:[['放大','7X~45X','blue'],['工作距离','100mm','green'],['变倍','0.7X~4.5X',''],['目镜','WF10X/20mm','']],
+   desc:'工业在线检测、组装与解剖操作'},
+  {id:'eq-14', cat:'optical', name:'金相显微镜', model:'舜宇 SOPTOP RX50M', status:'offline', img:'https://img1.17img.cn/17img/images/202312/pic/8e676c76-96f2-4a4d-81ca-bb4f165eb90e.jpg',
+   params:[['观察','明/暗/偏光/DIC','blue'],['物镜','5X~100X','green'],['目镜','WF10X/20mm',''],['数码摄像头','Yes','']],
+   desc:'金相组织观察、材料微观分析'},
+
+  // --- ELECTRICAL ---
+  {id:'eq-15', cat:'electrical', name:'矢量网络分析仪', model:'R&S ZNB20', status:'online', img:'https://assets-us-01.kc-usercontent.com/ecb176a6-5a2e-0000-8943-84491e5fc8d1/c68392b0-4b4d-4479-a9a5-ae1c0ac2fe43/RS-ZNB_img01.jpg',
+   params:[['频率','100kHz~20GHz','blue'],['动态范围','140dB','green'],['端口','2端口',''],['功率','+13dBm','']],
+   desc:'射频/微波器件S参数测量、传输/反射特性分析'},
+  {id:'eq-16', cat:'electrical', name:'精密源测量单元(SMU)', model:'Keysight B2912B', status:'online', img:'https://assets.testequity.com/te1/product-images/medium/B2912B-TRANSP-SHAD-01-1600x900.jpg',
+   params:[['通道','2','blue'],['电压','±210V','green'],['电流','±3A DC / ±10.5A脉冲',''],['分辨率','10fA / 100nV','']],
+   desc:'I-V特性测量、半导体器件表征'},
+  {id:'eq-17', cat:'electrical', name:'数字存储示波器', model:'Keysight DSOX3054G', status:'online', img:'https://www.tethystechnology.com/wp-content/uploads/2023/11/DSOX3054G.jpg',
+   params:[['带宽','500MHz','blue'],['通道','4模拟','green'],['存储','4Mpts',''],['更新率','1M次/秒','']],
+   desc:'高速信号测量与波形分析'},
+  {id:'eq-18', cat:'electrical', name:'直流电阻测试仪', model:'Hioki RM3544', status:'online', img:'https://www.hioki.com/sites/default/files/2021-04/product_image5765.png',
+   params:[['范围','30mΩ~3MΩ','blue'],['精度','0.02%','green'],['分辨率','1μΩ',''],['温度修正','铜线补偿','']],
+   desc:'电机/变压器绕组电阻、接触电阻测量'},
+  {id:'eq-19', cat:'electrical', name:'精密LCR表', model:'Keysight E4980A', status:'online', img:'https://keysight-h.assetsadobe.com/is/image/content/dam/keysight/en/img/prd/scopes-analyzers-meters/lcr-meter-and-impedance-measurement-product/e48980al/E4980AL-TRANSP-SHAD-01-20190228.png',
+   params:[['频率','20Hz~2MHz','blue'],['精度','0.05%','green'],['速度','同类最快',''],['接口','GPIB/LAN/USB','']],
+   desc:'阻抗/电容/电感/电阻精密测量'},
+  {id:'eq-20', cat:'electrical', name:'台式精密数字万用表', model:'MASTECH MS8050', status:'offline', img:'https://m.media-amazon.com/images/I/51i1MFZyooL._AC_UF894,1000_QL80_.jpg',
+   params:[['显示','53000计数 VFD','blue'],['精度','0.03% DC','green'],['True RMS','Yes',''],['接口','USB','']],
+   desc:'精密电压/电流/电阻测量'},
+  {id:'eq-21', cat:'electrical', name:'高斯计/特斯拉计', model:'KANETEC TM-901EXP', status:'online', img:'https://cdn11.bigcommerce.com/s-4s9liwcv/images/stencil/1280x1280/products/699242/864317/TM-901__43829.1720202698.jpg?c=2',
+   params:[['范围','0~3000mT','blue'],['采样','40~500Hz','green'],['续航','130~160h',''],['尺寸','32×35×20cm','']],
+   desc:'磁通密度测量、磁场分布检测'},
+  {id:'eq-22', cat:'electrical', name:'数显推拉力计', model:'IMADA ZTS-500N', status:'testing', img:'https://www.forcegauge.net/image/product/70976/zts_main.webp',
+   params:[['范围','0~500N','blue'],['精度','±0.2% FS','green'],['采样','2000Hz',''],['显示','OLED','']],
+   desc:'推拉力测试、键合强度测试'},
+  {id:'eq-23', cat:'electrical', name:'探针台', model:'英铂 YB800', status:'online', img:'http://www.ybsemi-solution.com/uploadfile/2024/0828/20240828041613606.jpg',
+   params:[['轴','X/Y/Z/θ四轴','blue'],['晶圆','4"~8"','green'],['真空吸附','Yes',''],['防振','可选配','']],
+   desc:'晶圆级电性能测试、探针测试'},
+  {id:'eq-24', cat:'electrical', name:'热电偶测温仪', model:'安柏 AT4708V', status:'offline', img:'',
+   params:[['类型','K/J/T/E','blue'],['范围','-200~+1370°C','green'],['精度','±(0.3%+1°C)',''],['通道','多通道','']],
+   desc:'精密温度测量与数据记录'},
+
+  // --- MATERIAL ---
+  {id:'eq-25', cat:'material', name:'场发射扫描电子显微镜', model:'Thermo Fisher Apreo 2C', status:'online', img:'https://mma.prnewswire.com/media/1224608/Thermo_Fisher_Scientific_Apreo_2.jpg?p=facebook',
+   params:[['分辨率','1.2nm@1kV','blue'],['电压','0.2~30kV','green'],['束流','50nA(可400nA)'],['样品室','340mm宽/12端口','']],
+   desc:'高分辨率表面形貌与成分分析'},
+  {id:'eq-26', cat:'material', name:'X射线能谱仪(EDS)', model:'Oxford Ultim Max 65', status:'online', img:'https://nano.oxinst.com/assets/components/phpthumbof/cache/Ultim%20Max%20PR%20%283%29.a914bc4b4627baa50252e9d5feb727b3.jpg',
+   params:[['传感器','170mm²','blue'],['分辨率','129eV MnKα','green'],['吞吐','>1,000,000cps',''],['角度','0°~45°','']],
+   desc:'微区元素成分分析、面分布成像'},
+  {id:'eq-27', cat:'material', name:'红外显微镜/光谱仪', model:'Thermo Nicolet iN10', status:'online', img:'https://www.thermofisher.com/content/dam/tfsite/images/storefront/spectroscopy/ftir/nicolet_in10_720x480.jpg',
+   params:[['模式','透射/反射/ATR','blue'],['分析','微米级颗粒','green'],['软件','OMNIC',''],['应用','制药/高分子/半导体','']],
+   desc:'微量样品化学成分鉴定、失效分析'},
+  {id:'eq-28', cat:'material', name:'差示扫描量热仪', model:'Netzsch DSC 300 Caliris', status:'online', img:'https://analyzing-testing.netzsch.com/_Resources/Persistent/0/f/c/b/0fcb77db29c797b86d3fcd86b636c0bfb0f2a0d4/DSC_300_Caliris_Classic_01-800x800.webp',
+   params:[['温度','-180~600°C','blue'],['升温','0~100K/min','green'],['冷却','液氮/机械',''],['传感器','高灵敏度','']],
+   desc:'材料热性能分析（熔融、结晶、玻璃化转变等）'},
+  {id:'eq-29', cat:'material', name:'热裂解-气相色谱质谱联用', model:'Agilent 8890-5977C + Frontier PY-3030D', status:'online', img:'https://www.frontier-lab.com/assets/image/products/Pyrolyzer-3030D.jpg',
+   params:[['质量范围','1.6~1050amu','blue'],['IDL','≤10fg','green'],['裂解温度','RT+10~1050°C',''],['谱库','NIST2020','']],
+   desc:'高分子材料定性/定量分析、有机成分鉴定'},
+  {id:'eq-30', cat:'material', name:'高速摄像机', model:'中科君达 M230C Pro', status:'online', img:'https://www.gaosushexiangji.com/uploads/images/20260114/3c46d09eca6b674c1303ef2ab47ae21e.jpg',
+   params:[['分辨率','1920×1080','blue'],['帧率','3200fps','green'],['快门','100ns',''],['存储','128GB~2TB SSD','']],
+   desc:'高速瞬态过程捕捉、碰撞分析、工艺检测'},
+  {id:'eq-31', cat:'material', name:'红外热成像仪', model:'高德智感 PL630', status:'online', img:'https://www.guideir.cn/Public/Uploads/uploadfile/images/20260120/guanwangchanpin+ApexVision_338338-PL630S.png',
+   params:[['模式','可见光+红外双模','blue'],['探测器','高分辨率','green'],['分析','配套软件',''],['应用','电气/设备维护','']],
+   desc:'温度分布检测、热异常排查'},
+
+  // --- SAMPLE PREP ---
+  {id:'eq-32', cat:'sample', name:'氩离子研磨抛光仪', model:'Fischione Model 1061', status:'online', img:'https://snsf.stanford.edu/sites/g/files/sbiybj18236/files/styles/large/public/media/image/sem_ionmill_1.jpg?itok=BXbcAOVz',
+   params:[['离子源','100eV~10keV','blue'],['角度','0~+10°','green'],['样品','10×10×4mm',''],['冷却','液氮18h+','']],
+   desc:'SEM/TEM样品截面/平面离子抛光'},
+  {id:'eq-33', cat:'sample', name:'真空冷镶嵌机', model:'舜仪 Weyee Vim-1', status:'online', img:'http://zjyqgw.com/upload/202302/15/202302151042106660.jpg',
+   params:[['腔体','透明真空','blue'],['功能','抽吸/灌注','green'],['应用','金相样品制备',''],['模具','配套可选','']],
+   desc:'金相样品真空镶嵌/固化，减少气泡'},
+  {id:'eq-34', cat:'sample', name:'精密热风烤箱', model:'志圣 C-SUN SMO-1B', status:'online', img:'https://s3.ap-northeast-1.amazonaws.com/csun.com.tw/wp-content/uploads/2018/03/5211.png',
+   params:[['内腔','45×40×40cm','blue'],['最高温','200°C','green'],['均匀性','±5°C',''],['类型','热风循环','']],
+   desc:'样品烘干、固化、热处理'},
+  {id:'eq-35', cat:'sample', name:'真空干燥箱', model:'EDESON DZF-6020', status:'online', img:'https://res.cloudinary.com/dbniglyrl/image/upload/c_fill,g_auto/v1772491660/products/1772491658662-cropped_1.jpg',
+   params:[['温度','RT+10~200°C','blue'],['真空度','-0.1MPa','green'],['功率','500W',''],['内胆','304不锈钢','']],
+   desc:'真空环境下干燥、热处理'},
+  {id:'eq-36', cat:'sample', name:'箱式电阻炉/马弗炉', model:'SX2-5-12NTP', status:'offline', img:'https://image.made-in-china.com/202f0j00soTgJWiIgEzv/Sx2-5-12-High-Temperature-1200-Degree-Laboratory-Muffle-Furnace.webp',
+   params:[['温度','100~1200°C','blue'],['容量','~2.2L','green'],['稳定性','±1°C',''],['加热','金属丝','']],
+   desc:'高温灰化、热处理、烧结'},
+  {id:'eq-37', cat:'sample', name:'推拉力测试机', model:'苏州宇宏 YH9002', status:'online', img:'https://image.made-in-china.com/2f0j00wSCqRMfmkvbEzv/Push-and-Pull-Tester-for-Bond-Testing.webp',
+   params:[['测试','wire pull/die shear','blue'],['加载','自动','green'],['传感器','精密力传感',''],['模式','push-off多种','']],
+   desc:'键合强度测试、芯片推力/拉力测试'},
+
+  // --- GENERAL ---
+  {id:'eq-38', cat:'general', name:'半微量分析天平', model:'A&D GH-202', status:'online', img:'https://www.dscbalances.com/cdn/shop/products/a_d-003_2_600x600_crop_center.jpg?v=1634983051',
+   params:[['量程','51g/220g','blue'],['可读性','0.01mg/0.1mg','green'],['重复性','0.02mg/0.1mg',''],['防风罩','玻璃罩','']],
+   desc:'精密称量'},
+  {id:'eq-39', cat:'general', name:'分析天平', model:'Mettler Toledo ME55', status:'online', img:'https://www.mt.com/images/WebShop/MainImage/30088524.jpg',
+   params:[['量程','52g','blue'],['可读性','0.001mg (1μg)','green'],['过载保护','Yes',''],['产地','瑞士','']],
+   desc:'精密称量'},
+
+  // --- SOLDERING ---
+  {id:'eq-40', cat:'soldering', name:'2工具纳米返修工作站', model:'JBC NASE-2HC', status:'online', img:'https://www.jbctools.com/img-products/NANE.jpg',
+   params:[['功率','14W/工具','blue'],['温度','90~450°C','green'],['精度','±3%',''],['ESD安全','Yes','']],
+   desc:'精密焊接/返修、微小元件拆装'},
+
+  // --- FAILURE ANALYSIS ---
+  {id:'eq-41', cat:'failure', name:'激光开封系统', model:'RKD RA-9000', status:'online', img:'http://www.befirst-tech.com/images/RKD%20elite-etch.png',
+   params:[['激光','紫外高峰值','blue'],['脉冲','纳秒/皮秒级','green'],['功能','精确去塑封料',''],['控制','触摸屏','']],
+   desc:'IC芯片非破坏性激光开封、失效分析'},
+  {id:'eq-42', cat:'failure', name:'多功能性能测试机', model:'LEAD CS-MD', status:'testing', img:'https://image.made-in-china.com/202f0j00LJBWfdhqMrcy/Multi-Function-Testing-Machine-Lead-Battery-Tester.webp',
+   params:[['功能','多功能平台','blue'],['测量','电压/电流精密','green'],['应用','元件/电池',''],['评估','质量控制','']],
+   desc:'电子元件/电池性能测试'},
+  {id:'eq-43', cat:'failure', name:'IC热性能测试系统', model:'LeaderWE Sentris IC', status:'offline', img:'',
+   params:[['功能','热阻测量','blue'],['监控','实时温度','green'],['封装','多种形式',''],['流程','自动化','']],
+   desc:'集成电路热特性测试'},
+];
+
+// ========== EXPERIMENT DATA ==========
+const experimentData = [
+  {code:'EXP-001', title:'镜头MTF特性全频段表征', cat:'optical',
+   desc:'利用Trioptics ImageMaster HR对多批次镜头进行轴向/离轴MTF全频段扫描，建立光学成像质量基线数据库，覆盖可见光至近红外波段。',
+   tags:['#MTF','#Optical','#Trioptics'],
+   status:'completed', equip:['Trioptics ImageMaster HR', 'Nikon VMZ-S3020'],
+   background:'客户反馈某批次镜头成像模糊，需系统评估光学传递函数衰减情况。',
+   approach:'设计全视场MTF扫描方案，对比标准镜头与待测镜头在多波长下的MTF曲线差异，定位衰减频段。',
+   output:'完成12组镜头MTF曲线库，发现3片镜头低频MTF下降15%，追溯至组装偏心。输出标准报告模板。'},
+  {code:'EXP-002', title:'SEM-EDS芯片异物成分溯源', cat:'material',
+   desc:'Thermo Fisher Apreo 2C SEM配合Oxford Ultim Max 65 EDS，对芯片表面微米级异物进行形貌与元素面分布分析，追溯污染源。',
+   tags:['#SEM','#EDS','#FailureAnalysis'],
+   status:'completed', equip:['Thermo Fisher Apreo 2C', 'Oxford Ultim Max 65'],
+   background:'晶圆封装后表面出现不明颗粒异物，影响良率。',
+   approach:'SEM高倍观察异物形貌→EDS元素面扫描→比对工艺流程中各材料元素特征指纹。',
+   output:'确认异物为含硅+氯的聚合物残留，溯源至清洗工序。推动供应商优化清洗工艺，良率提升8%。'},
+  {code:'EXP-003', title:'晶圆级I-V特性全参数提取', cat:'electrical',
+   desc:'Keysight B2912B SMU配合英铂YB800探针台，对8英寸晶圆进行全片区I-V特性曲线扫描，提取阈值电压、漏电流等关键参数分布图。',
+   tags:['#SMU','#I-VCurve','#Wafer'],
+   status:'active', equip:['Keysight B2912B', '英铂 YB800', 'Keysight DSOX3054G'],
+   background:'新工艺节点下器件均匀性评估，需要晶圆级电参数mapping。',
+   approach:'编写自动化测试脚本，步进探针逐die扫描，实时记录I-V曲线并生成wafer map。',
+   output:'已完成60%晶圆mapping，发现中心区域Vth偏移+0.1V趋势，正在分析工艺均匀性根因。'},
+  {code:'EXP-004', title:'3D表面微观形貌全表征', cat:'optical',
+   desc:'Keyence VK-X3050激光共聚焦+VR-6200宽域轮廓仪双平台联用，实现从纳米级到毫米级跨尺度3D表面形貌测量。',
+   tags:['#3DProfiling','#LaserConfocal','#SurfaceRoughness'],
+   status:'active', equip:['Keyence VK-X3050', 'Keyence VR-6200', 'Zygo NV'],
+   background:'精密加工零件表面粗糙度与微观几何误差评估需求。',
+   approach:'VK-X3050测量纳米级微观区域→VR-6200测量大面积宏观区域→数据拼接实现跨尺度表征。',
+   output:'建立跨尺度3D表面测量SOP，正在积累不同工艺样品的形貌指纹库。'},
+  {code:'EXP-005', title:'材料热失效—DSC与红外联用', cat:'material',
+   desc:'Netzsch DSC 300热分析配合高德智感PL630红外热像仪，研究高分子材料在热循环下的相变行为与热分布异常。',
+   tags:['#DSC','#ThermalImaging','#Polymer'],
+   status:'completed', equip:['Netzch DSC 300', '高德智感 PL630'],
+   background:'封装材料在回流焊后出现分层，需分析热性能变化。',
+   approach:'DSC测定Tg/Cp变化→红外热像仪记录回流焊过程温度分布→关联分层位置与热热点。',
+   output:'确认材料Tg下降12°C导致回流焊时分层，建议调整回流焊温度曲线下限。'},
+  {code:'EXP-006', title:'激光开封-芯片内部缺陷检测', cat:'failure',
+   desc:'RKD RA-9000激光开封机无损去除塑封料，配合SEM观察芯片内部引线键合状态与缺陷。',
+   tags:['#LaserDecap','#DefectInspection','#Semiconductor'],
+   status:'active', equip:['RKD RA-9000', 'Thermo Fisher Apreo 2C'],
+   background:'失效芯片需开封后检查内部引线与die表面，传统酸开封损伤金线。',
+   approach:'激光参数梯度调试→去除塑封料保护金线→SEM高倍观察键合界面与die表面。',
+   output:'成功保护金线完整性，发现2号样品键合点存在界面裂纹。正在积累激光参数-材料对照表。'},
+  {code:'EXP-007', title:'键合强度统计分析', cat:'sample',
+   desc:'苏州宇宏YH9002推拉力机+IMADA ZTS-500N，对金线键合与芯片贴装进行wire pull/die shear批量测试，建立统计过程控制基线。',
+   tags:['#BondTest','#SPC','#Reliability'],
+   status:'active', equip:['苏州宇宏 YH9002', 'IMADA ZTS-500N'],
+   background:'客户要求提供键合强度CPK数据，需建立统计基线。',
+   approach:'30样品/批次×3批次→wire pull与die shear双模式→计算均值/σ/CPK→SPC控制图。',
+   output:'Wire pull均值8.2g，CPK=1.33达标。Die shear正在积累数据中。'},
+  {code:'EXP-008', title:'高速碰撞过程瞬态捕捉', cat:'material',
+   desc:'中科君达M230C高速相机以3200fps捕捉跌落测试中的器件碰撞过程，配合红外热像仪记录冲击热分布。',
+   tags:['#HighSpeedCamera','#DropTest','#Transient'],
+   status:'failed', equip:['中科君达 M230C', '高德智感 PL630'],
+   background:'跌落测试后器件开裂，需可视化碰撞瞬间应力分布。',
+   approach:'高速相机+红外热像仪同步触发→跌落台释放→后处理帧间分析位移与温度场。',
+   output:'实验因同步触发延迟导致前5帧丢失，无法捕捉碰撞瞬间。计划升级触发电路后重试。已归档失败原因分析。'},
+];
+
+// ========== RENDER EQUIPMENT ==========
+const catNames = {
+  optical: '光学', electrical: '电性能', material: '材料',
+  sample: '样品制备', general: '通用', soldering: '焊接', failure: '失效分析'
+};
+
+function renderEquipment(cat = 'all') {
+  const grid = document.getElementById('equip-grid');
+  const filtered = cat === 'all' ? equipmentData : equipmentData.filter(e => e.cat === cat);
+  grid.innerHTML = filtered.map((eq, i) => {
+    const statusClass = eq.status === 'online' ? 'status-online' : eq.status === 'offline' ? 'status-offline' : 'status-testing';
+    const statusText = eq.status === 'online' ? '[ONLINE]' : eq.status === 'offline' ? '[OFFLINE]' : '[TESTING]';
+    const imgHTML = eq.img 
+      ? `<img class="equip-img" src="${eq.img}" alt="${eq.model}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=&quot;equip-img-placeholder&quot;>🔬</div>'">`
+      : `<div class="equip-img-placeholder">🔬</div>`;
+    const paramsHTML = eq.params.map(p => 
+      `<div class="param-row"><span class="param-key">${p[0]}:</span><span class="param-val ${p[2]||''}">${p[1]}</span></div>`
+    ).join('');
+    return `
+      <div class="equip-card fade-in" style="animation-delay: ${i * 0.03}s" onclick="openEquipModal('${eq.id}')">
+        <div class="equip-glow"></div>
+        <div class="equip-cat-tag">${catNames[eq.cat] || ''}</div>
+        <div class="equip-img-wrap">${imgHTML}</div>
+        <div class="equip-header">
+          <div>
+            <div class="equip-name">${eq.name}</div>
+            <div class="equip-model">${eq.model}</div>
+          </div>
+          <span class="equip-status ${statusClass}">${statusText}</span>
+        </div>
+        <div class="equip-params">${paramsHTML}</div>
+      </div>`;
+  }).join('');
+}
+
+// ========== RENDER EXPERIMENTS ==========
+function renderExperiments() {
+  const grid = document.getElementById('exp-grid');
+  grid.innerHTML = experimentData.map((exp, i) => {
+    const statusClass = exp.status === 'completed' ? 'progress-completed' : exp.status === 'active' ? 'progress-active' : exp.status === 'failed' ? 'progress-failed' : 'progress-archived';
+    const statusText = exp.status === 'completed' ? '[COMPLETED]' : exp.status === 'active' ? '[IN-PROGRESS]' : exp.status === 'failed' ? '[FAILED]' : '[ARCHIVED]';
+    const tagsHTML = exp.tags.map(t => `<span class="exp-tag">${t}</span>`).join('');
+    return `
+      <div class="exp-card fade-in" style="animation-delay: ${i * 0.05}s" onclick="openExpModal('${exp.code}')">
+        <div class="exp-glow"></div>
+        <div class="exp-code">${exp.code}</div>
+        <div class="exp-title">${exp.title}</div>
+        <div class="exp-desc">${exp.desc}</div>
+        <div class="exp-footer">
+          <div class="exp-tags">${tagsHTML}</div>
+          <span class="exp-progress ${statusClass}">${statusText}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ========== MODAL ==========
+function openEquipModal(id) {
+  const eq = equipmentData.find(e => e.id === id);
+  if (!eq) return;
+  const paramsHTML = eq.params.map(p => `<div class="param-row"><span class="param-key">${p[0]}:</span><span class="param-val ${p[2]||''}">${p[1]}</span></div>`).join('');
+  const imgHTML = eq.img 
+    ? `<img src="${eq.img}" alt="${eq.model}" style="width:100%;max-height:280px;object-fit:cover;border-radius:6px;margin-bottom:16px;" onerror="this.style.display='none'">`
+    : '';
+  document.getElementById('modal-body').innerHTML = `
+    ${imgHTML}
+    <div class="modal-code">${catNames[eq.cat] || ''} // ${eq.model}</div>
+    <div class="modal-title">${eq.name}</div>
+    <div class="modal-section">
+      <div class="modal-section-title">DESCRIPTION</div>
+      <div class="modal-section-body">${eq.desc}</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">SPECIFICATIONS</div>
+      <div class="modal-section-body" style="font-family:var(--font-mono);font-size:12px;line-height:1.8;">${paramsHTML}</div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('active');
+  playClick();
+}
+
+function openExpModal(code) {
+  const exp = experimentData.find(e => e.code === code);
+  if (!exp) return;
+  const equipHTML = exp.equip.map(e => `<span class="modal-equip-tag">${e}</span>`).join('');
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-code">${exp.code}</div>
+    <div class="modal-title">${exp.title}</div>
+    <div class="modal-section">
+      <div class="modal-section-title">BACKGROUND // 背景</div>
+      <div class="modal-section-body">${exp.background}</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">APPROACH // 方案</div>
+      <div class="modal-section-body">${exp.approach}</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">EQUIPMENT // 设备</div>
+      <div class="modal-section-body"><div class="modal-equip-list">${equipHTML}</div></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">OUTPUT // 最终产出</div>
+      <div class="modal-section-body">${exp.output}</div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('active');
+  playClick();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+}
+
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+// ========== FILTER TABS ==========
+document.querySelectorAll('.filter-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    renderEquipment(tab.dataset.cat);
+    playClick();
+  });
+});
+
+// ========== NUMBER COUNTER ==========
+function animateNumbers() {
+  document.querySelectorAll('.hero-stat .num').forEach(el => {
+    const target = parseInt(el.dataset.target);
+    const duration = 1500;
+    const start = performance.now();
+    function update(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.floor(target * eased);
+      if (progress < 1) requestAnimationFrame(update);
+      else el.textContent = target;
+    }
+    requestAnimationFrame(update);
+  });
+}
+
+// ========== TERMINAL TYPING ==========
+const logoTexts = [
+  '[X]-LAB // System Operational',
+  '[X]-LAB // 48 Units Online',
+  '[X]-LAB // Failure Analysis Active',
+  '[X]-LAB // All Systems Nominal'
+];
+let logoIdx = 0;
+let logoCharIdx = 0;
+let logoTyping = true;
+
+function typeLogo() {
+  const el = document.getElementById('logo-text');
+  const text = logoTexts[logoIdx];
+  if (logoTyping) {
+    logoCharIdx++;
+    el.innerHTML = text.substring(0, logoCharIdx) + '<span class="cursor"></span>';
+    if (logoCharIdx >= text.length) {
+      logoTyping = false;
+      setTimeout(typeLogo, 3000);
+      return;
+    }
+    setTimeout(typeLogo, 50 + Math.random() * 50);
+  } else {
+    logoCharIdx--;
+    el.innerHTML = text.substring(0, logoCharIdx) + '<span class="cursor"></span>';
+    if (logoCharIdx <= 0) {
+      logoTyping = true;
+      logoIdx = (logoIdx + 1) % logoTexts.length;
+      setTimeout(typeLogo, 200);
+      return;
+    }
+    setTimeout(typeLogo, 30);
+  }
+}
+
+// ========== TERMINAL COMMAND ==========
+const terminalBody = document.getElementById('terminal-body');
+const terminalInput = document.getElementById('terminal-input');
+
+const commands = {
+  help: () => {
+    addTerminalOutput(`<span class="output">Available commands:</span>`);
+    addTerminalOutput(`<span class="accent">  help</span><span class="output">      - Show this help message</span>`);
+    addTerminalOutput(`<span class="accent">  skills</span><span class="output">    - List director's skill tree</span>`);
+    addTerminalOutput(`<span class="accent">  equip</span><span class="output">     - List all equipment (count by category)</span>`);
+    addTerminalOutput(`<span class="accent">  exp</span><span class="output">       - List all experiments</span>`);
+    addTerminalOutput(`<span class="accent">  status</span><span class="output">    - Show system status</span>`);
+    addTerminalOutput(`<span class="accent">  theme</span><span class="output">     - Cycle color theme</span>`);
+    addTerminalOutput(`<span class="accent">  clear</span><span class="output">     - Clear terminal</span>`);
+    addTerminalOutput(`<span class="accent">  about</span><span class="output">     - About this lab</span>`);
+    addTerminalOutput(`<span class="warn">  Tip: Press / to search equipment, T to cycle theme</span>`);
+  },
+  skills: () => {
+    addTerminalOutput(`<span class="accent">// ANALYTICAL</span>`);
+    addTerminalOutput(`<span class="output">  Optical MTF Analysis      ████████████████████░ 95%</span>`);
+    addTerminalOutput(`<span class="output">  SEM/EDS Characterization   ███████████████████░░ 90%</span>`);
+    addTerminalOutput(`<span class="output">  Failure Analysis (FA)     ██████████████████░░░ 88%</span>`);
+    addTerminalOutput(`<span class="output">  Electrical Testing        █████████████████░░░░ 85%</span>`);
+    addTerminalOutput(`<span class="accent">// ENGINEERING</span>`);
+    addTerminalOutput(`<span class="output">  Full-Stack Development    ███████████████████░░ 92%</span>`);
+    addTerminalOutput(`<span class="output">  Automation Pipeline       ███████████████████░░ 90%</span>`);
+    addTerminalOutput(`<span class="output">  Bug Deep Audit            ███████████████████░░ 93%</span>`);
+  },
+  equip: () => {
+    const cats = {};
+    equipmentData.forEach(e => { cats[e.cat] = (cats[e.cat]||0) + 1; });
+    addTerminalOutput(`<span class="accent">// Equipment Inventory: ${equipmentData.length} units</span>`);
+    Object.entries(cats).forEach(([k,v]) => {
+      addTerminalOutput(`<span class="output">  ${catNames[k].padEnd(12)} ${v.toString().padStart(3)} units</span>`);
+    });
+    const online = equipmentData.filter(e=>e.status==='online').length;
+    addTerminalOutput(`<span class="output">  ─────────────────────────────</span>`);
+    addTerminalOutput(`<span class="output">  ONLINE: ${online} / OFFLINE: ${equipmentData.length-online}</span>`);
+  },
+  exp: () => {
+    addTerminalOutput(`<span class="accent">// Lab Experiments: ${experimentData.length} logs</span>`);
+    experimentData.forEach(e => {
+      const icon = e.status === 'completed' ? '✓' : e.status === 'active' ? '▶' : e.status === 'failed' ? '✗' : '▢';
+      addTerminalOutput(`<span class="output">  ${icon} ${e.code}  ${e.title}</span>`);
+    });
+  },
+  status: () => {
+    addTerminalOutput(`<span class="accent">// System Status</span>`);
+    addTerminalOutput(`<span class="output">  STATUS:    <span style="color:var(--color-green)">● ONLINE</span></span>`);
+    addTerminalOutput(`<span class="output">  UPTIME:    99.9%</span>`);
+    addTerminalOutput(`<span class="output">  EQUIPMENT: ${equipmentData.length} units operational</span>`);
+    addTerminalOutput(`<span class="output">  EXPERIMENTS: ${experimentData.filter(e=>e.status==='active').length} active / ${experimentData.filter(e=>e.status==='completed').length} completed / ${experimentData.filter(e=>e.status==='failed').length} failed</span>`);
+    addTerminalOutput(`<span class="output">  FOCUS:     Optical Metrology & Failure Analysis</span>`);
+  },
+  theme: () => { toggleTheme(); addTerminalOutput(`<span class="output">Theme cycled.</span>`); },
+  clear: () => { terminalBody.innerHTML = ''; },
+  about: () => {
+    addTerminalOutput(`<span class="accent">// About [X]-LAB</span>`);
+    addTerminalOutput(`<span class="output">  [X]-LAB is a precision metrology and failure analysis lab.</span>`);
+    addTerminalOutput(`<span class="output">  Director: 崔兵 (ID: 20134777)</span>`);
+    addTerminalOutput(`<span class="output">  Department: Lab Line, 舜宇集团</span>`);
+    addTerminalOutput(`<span class="output">  Equipment: ${equipmentData.length} units across 7 platforms</span>`);
+    addTerminalOutput(`<span class="output">  Total Asset Value: ¥30,233,134</span>`);
+  }
+};
+
+function addTerminalOutput(html) {
+  const line = document.createElement('div');
+  line.className = 'terminal-line';
+  line.innerHTML = html;
+  terminalBody.appendChild(line);
+  terminalBody.scrollTop = terminalBody.scrollHeight;
+}
+
+terminalInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const cmd = terminalInput.value.trim().toLowerCase();
+    if (!cmd) return;
+    addTerminalOutput(`<span class="prompt">x-lab@console:~$</span> <span class="cmd">${cmd}</span>`);
+    playClick();
+    if (commands[cmd]) {
+      commands[cmd]();
+    } else {
+      addTerminalOutput(`<span class="output">Command not found: ${cmd}. Type </span><span class="accent">help</span><span class="output"> for available commands.</span>`);
+    }
+    terminalInput.value = '';
+  }
+});
+
+// ========== SEARCH ==========
+const searchOverlay = document.getElementById('search-overlay');
+const searchInput = document.getElementById('search-input');
+const searchResults = document.getElementById('search-results');
+
+function openSearch() {
+  searchOverlay.classList.add('active');
+  setTimeout(() => searchInput.focus(), 100);
+}
+function closeSearch() {
+  searchOverlay.classList.remove('active');
+  searchInput.value = '';
+  searchResults.innerHTML = '';
+}
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  if (!q) { searchResults.innerHTML = ''; return; }
+  const results = equipmentData.filter(e => 
+    e.name.toLowerCase().includes(q) || 
+    e.model.toLowerCase().includes(q) || 
+    e.desc.toLowerCase().includes(q) ||
+    e.params.some(p => p[0].toLowerCase().includes(q) || p[1].toLowerCase().includes(q))
+  );
+  searchResults.innerHTML = results.slice(0, 8).map(e => 
+    `<div class="search-result" onclick="closeSearch();openEquipModal('${e.id}')">
+      <div class="name">${e.name}</div>
+      <div class="meta">${e.model} // ${catNames[e.cat]}</div>
+    </div>`
+  ).join('') || '<div class="search-result"><div class="name" style="color:var(--color-text-muted)">No results found.</div></div>';
+});
+
+searchOverlay.addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeSearch();
+});
+
+// ========== KEYBOARD SHORTCUTS ==========
+document.addEventListener('keydown', (e) => {
+  // Don't trigger when typing in input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    if (e.key === 'Escape') {
+      closeSearch();
+      closeModal();
+      searchInput.blur();
+      terminalInput.blur();
+    }
+    return;
+  }
+  if (e.key === '/') { e.preventDefault(); openSearch(); }
+  if (e.key === 't' || e.key === 'T') { toggleTheme(); }
+  if (e.key === 'Escape') { closeSearch(); closeModal(); }
+});
+
+// ========== THEME ==========
+let themeIdx = 0;
+const themes = ['', 'theme-amber', 'theme-green'];
+const themeNames = ['BLUE', 'AMBER', 'GREEN'];
+
+function toggleTheme() {
+  themeIdx = (themeIdx + 1) % themes.length;
+  document.body.className = themes[themeIdx];
+  document.querySelector('.theme-btn').textContent = `THEME: ${themeNames[themeIdx]}`;
+  playClick();
+}
+
+// ========== SOUND ==========
+let soundEnabled = false;
+let audioCtx = null;
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('sound-btn');
+  btn.textContent = soundEnabled ? '🔊' : '🔇';
+  btn.classList.toggle('active', soundEnabled);
+  if (soundEnabled && !audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  playClick();
+}
+
+function playClick() {
+  if (!soundEnabled || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.frequency.value = 800 + Math.random() * 200;
+  osc.type = 'square';
+  gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+  osc.start(audioCtx.currentTime);
+  osc.stop(audioCtx.currentTime + 0.05);
+}
+
+// ========== INIT ==========
+renderEquipment();
+renderExperiments();
+typeLogo();
+setTimeout(animateNumbers, 500);
+</script>
+</body>
+</html>
